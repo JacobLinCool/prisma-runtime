@@ -5,6 +5,7 @@ const args = process.argv.slice(2);
 const HELP = args.includes("--help") || args.includes("-h");
 const DIR = args.filter((arg) => !arg.startsWith("-"))[0] || ".";
 const DRY = args.includes("--dry") || args.includes("-d");
+const KEEP_RUNTIME = args.includes("--keep-runtime");
 const NO_FIX_DTS = args.includes("--no-fix-dts");
 const NO_BROWSER = args.includes("--no-browser");
 const NO_PACKAGE_JSON = args.includes("--no-package-json");
@@ -16,6 +17,7 @@ export function run(): void {
         );
         console.log("Options: -d, --dry         : dry run");
         console.log("         -h, --help        : show this help");
+        console.log("         --keep-runtime    : keep the generated runtime");
         console.log("         --no-fix-dts      : do not fix d.ts exports");
         console.log("         --no-browser      : remove index-browser.js");
         console.log("         --no-package-json : remove package.json");
@@ -53,31 +55,35 @@ export function run(): void {
 
         const dirs = new Set<string>();
         files.forEach((file) => {
-            const content = fs.readFileSync(file, "utf8");
-            if (content.includes("./runtime/index-browser")) {
-                const patched = content.replace(
-                    /\.\/runtime\/index-browser/g,
-                    "prisma-runtime/dist/runtime/index-browser",
-                );
-                fs.writeFileSync(file, patched);
-            } else {
-                const patched = content.replace(/\.\/runtime(\/index)?/g, "prisma-runtime");
-                fs.writeFileSync(file, patched);
+            if (!KEEP_RUNTIME) {
+                const content = fs.readFileSync(file, "utf8");
+                if (content.includes("./runtime/index-browser")) {
+                    const patched = content.replace(
+                        /\.\/runtime\/index-browser/g,
+                        "prisma-runtime/dist/runtime/index-browser",
+                    );
+                    fs.writeFileSync(file, patched);
+                } else {
+                    const patched = content.replace(/\.\/runtime(\/index)?/g, "prisma-runtime");
+                    fs.writeFileSync(file, patched);
+                }
+                console.log(`Updated ${file}`);
             }
-            console.log(`Updated ${file}`);
             dirs.add(path.dirname(file));
         });
 
         [...dirs].forEach((dir) => {
-            const runtime = path.join(dir, "runtime");
-            if (fs.existsSync(runtime)) {
-                fs.rmSync(runtime, { recursive: true });
-                console.log(`Removed ${runtime}`);
-            }
-            const lib = fs.readdirSync(dir).find((file) => file.endsWith(".node"));
-            if (lib) {
-                fs.rmSync(path.join(dir, lib));
-                console.log(`Removed ${lib}`);
+            if (!KEEP_RUNTIME) {
+                const runtime = path.join(dir, "runtime");
+                if (fs.existsSync(runtime)) {
+                    fs.rmSync(runtime, { recursive: true });
+                    console.log(`Removed ${runtime}`);
+                }
+                const lib = fs.readdirSync(dir).find((file) => file.endsWith(".node"));
+                if (lib) {
+                    fs.rmSync(path.join(dir, lib));
+                    console.log(`Removed ${lib}`);
+                }
             }
 
             if (NO_PACKAGE_JSON) {
