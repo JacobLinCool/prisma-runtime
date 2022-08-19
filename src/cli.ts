@@ -7,16 +7,18 @@ const DIR = args.filter((arg) => !arg.startsWith("-"))[0] || ".";
 const DRY = args.includes("--dry") || args.includes("-d");
 const NO_FIX_DTS = args.includes("--no-fix-dts");
 const NO_BROWSER = args.includes("--no-browser");
+const NO_PACKAGE_JSON = args.includes("--no-package-json");
 
 export function run(): void {
     if (HELP) {
         console.log(
             "prisma-runtime: fix require/import path of prisma generated files in a directory",
         );
-        console.log("Options: -d, --dry    : dry run");
-        console.log("         -h, --help   : show this help");
-        console.log("         --no-fix-dts : do not fix d.ts exports");
-        console.log("         --no-browser : remove index-browser.js");
+        console.log("Options: -d, --dry         : dry run");
+        console.log("         -h, --help        : show this help");
+        console.log("         --no-fix-dts      : do not fix d.ts exports");
+        console.log("         --no-browser      : remove index-browser.js");
+        console.log("         --no-package-json : remove package.json");
         console.log("Example: prisma-runtime target/dir");
         return;
     }
@@ -76,6 +78,14 @@ export function run(): void {
             if (lib) {
                 fs.rmSync(path.join(dir, lib));
                 console.log(`Removed ${lib}`);
+            }
+
+            if (NO_PACKAGE_JSON) {
+                const file = path.join(dir, "package.json");
+                if (fs.existsSync(file)) {
+                    fs.unlinkSync(file);
+                    console.log(`Removed ${file}`);
+                }
             }
         });
 
