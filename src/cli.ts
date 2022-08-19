@@ -25,9 +25,7 @@ export function run(): void {
         return;
     }
 
-    if (DRY) {
-        console.log("Dry run - no changes will be made");
-    }
+    DRY && console.log("Dry run - no changes will be made");
 
     const targets = ["index.js", "index.d.ts", "index-browser.js"];
     const files = list(DIR)
@@ -42,69 +40,67 @@ export function run(): void {
         files.forEach((file) => console.log(`- ${file}`));
     }
 
-    if (!DRY) {
-        if (NO_BROWSER) {
-            for (let i = files.length - 1; i >= 0; i--) {
-                if (path.basename(files[i]) === "index-browser.js") {
-                    fs.unlinkSync(files[i]);
-                    console.log(`Removed ${files[i]}`);
-                    files.splice(i, 1);
-                }
+    if (NO_BROWSER) {
+        for (let i = files.length - 1; i >= 0; i--) {
+            if (path.basename(files[i]) === "index-browser.js") {
+                DRY || fs.unlinkSync(files[i]);
+                console.log(`Removed ${files[i]}`);
+                files.splice(i, 1);
+            }
+        }
+    }
+
+    const dirs = new Set<string>();
+    files.forEach((file) => {
+        if (!KEEP_RUNTIME) {
+            const content = fs.readFileSync(file, "utf8");
+            if (content.includes("./runtime/index-browser")) {
+                const patched = content.replace(
+                    /\.\/runtime\/index-browser/g,
+                    "prisma-runtime/dist/runtime/index-browser",
+                );
+                DRY || fs.writeFileSync(file, patched);
+            } else {
+                const patched = content.replace(/\.\/runtime(\/index)?/g, "prisma-runtime");
+                DRY || fs.writeFileSync(file, patched);
+            }
+            console.log(`Updated ${file}`);
+        }
+        dirs.add(path.dirname(file));
+    });
+
+    [...dirs].forEach((dir) => {
+        if (!KEEP_RUNTIME) {
+            const runtime = path.join(dir, "runtime");
+            if (fs.existsSync(runtime)) {
+                DRY || fs.rmSync(runtime, { recursive: true });
+                console.log(`Removed ${runtime}`);
+            }
+            const lib = fs.readdirSync(dir).find((file) => file.endsWith(".node"));
+            if (lib) {
+                DRY || fs.rmSync(path.join(dir, lib));
+                console.log(`Removed ${lib}`);
             }
         }
 
-        const dirs = new Set<string>();
-        files.forEach((file) => {
-            if (!KEEP_RUNTIME) {
+        if (NO_PACKAGE_JSON) {
+            const file = path.join(dir, "package.json");
+            if (fs.existsSync(file)) {
+                DRY || fs.unlinkSync(file);
+                console.log(`Removed ${file}`);
+            }
+        }
+    });
+
+    if (!NO_FIX_DTS) {
+        files
+            .filter((file) => file.endsWith(".d.ts"))
+            .forEach((file) => {
                 const content = fs.readFileSync(file, "utf8");
-                if (content.includes("./runtime/index-browser")) {
-                    const patched = content.replace(
-                        /\.\/runtime\/index-browser/g,
-                        "prisma-runtime/dist/runtime/index-browser",
-                    );
-                    fs.writeFileSync(file, patched);
-                } else {
-                    const patched = content.replace(/\.\/runtime(\/index)?/g, "prisma-runtime");
-                    fs.writeFileSync(file, patched);
-                }
-                console.log(`Updated ${file}`);
-            }
-            dirs.add(path.dirname(file));
-        });
-
-        [...dirs].forEach((dir) => {
-            if (!KEEP_RUNTIME) {
-                const runtime = path.join(dir, "runtime");
-                if (fs.existsSync(runtime)) {
-                    fs.rmSync(runtime, { recursive: true });
-                    console.log(`Removed ${runtime}`);
-                }
-                const lib = fs.readdirSync(dir).find((file) => file.endsWith(".node"));
-                if (lib) {
-                    fs.rmSync(path.join(dir, lib));
-                    console.log(`Removed ${lib}`);
-                }
-            }
-
-            if (NO_PACKAGE_JSON) {
-                const file = path.join(dir, "package.json");
-                if (fs.existsSync(file)) {
-                    fs.unlinkSync(file);
-                    console.log(`Removed ${file}`);
-                }
-            }
-        });
-
-        if (!NO_FIX_DTS) {
-            files
-                .filter((file) => file.endsWith(".d.ts"))
-                .forEach((file) => {
-                    const content = fs.readFileSync(file, "utf8");
-                    const patched = content.replace(/export import/g, "export type");
-                    fs.writeFileSync(file, patched);
-                    console.log(`DTS Patched ${file}`);
-                });
-        }
+                const patched = content.replace(/export import/g, "export type");
+                DRY || fs.writeFileSync(file, patched);
+                console.log(`DTS Patched ${file}`);
+            });
     }
 }
 
