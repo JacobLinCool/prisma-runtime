@@ -1,6 +1,6 @@
 {
     "name": "prisma-runtime",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Just the prisma runtime and a CLI to fix path.",
     "author": "JacobLinCool <jacoblincool@gmail.com> (https://github.com/JacobLinCool)",
     "license": "MIT",
