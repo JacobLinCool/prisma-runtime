@@ -59,7 +59,7 @@ export function run(): void {
                 );
                 fs.writeFileSync(file, patched);
             } else {
-                const patched = content.replace(/\.\/runtime\/index/g, "prisma-runtime");
+                const patched = content.replace(/\.\/runtime(\/index)?/g, "prisma-runtime");
                 fs.writeFileSync(file, patched);
             }
             console.log(`Updated ${file}`);
