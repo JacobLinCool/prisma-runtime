@@ -97,7 +97,7 @@ export function run(): void {
             .filter((file) => file.endsWith(".d.ts"))
             .forEach((file) => {
                 const content = fs.readFileSync(file, "utf8");
-                const patched = content.replace(/export import/g, "export type");
+                const patched = content.replace(/export import/g, "export const");
                 DRY || fs.writeFileSync(file, patched);
                 console.log(`DTS Patched ${file}`);
             });
